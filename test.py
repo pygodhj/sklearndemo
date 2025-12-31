@@ -147,4 +147,3 @@ def drop_students_table():
 # 取消下面这行的注释以执行删除表操作
 # drop_students_table()
 
-
