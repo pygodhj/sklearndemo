@@ -1,0 +1,82 @@
+# 所有的服务都必须定义在 services: 块内部
+services:
+
+  # 这是一个服务块，定义了名为 "python-app" 的容器服务
+  python-app:
+
+    # 1. 构建配置
+    build: ./src
+    # 解释:
+    #   - `build`: 告诉Docker Compose，这个服务的镜像需要自己构建，而不是从Docker Hub等仓库拉取。
+    #   - `./app`: 指定了Dockerfile所在的目录路径。
+    #   - **作用**: Docker Compose会在当前目录下的 `app` 文件夹中寻找一个名为 `Dockerfile` 的文件，
+    #               并根据这个文件的指令来构建一个镜像，然后用这个镜像来启动容器。
+
+    # 2. 容器名称
+    container_name: python-app-gui
+    # 解释:
+    #   - `container_name`: 为将要创建的容器指定一个固定的、自定义的名称。
+    #   - **作用**: 默认情况下，Docker Compose会生成一个类似 `projectname_servicename_1` 的随机名称。
+    #               设置一个固定名称（如 `python-app-gui`）可以让你更容易地通过 `docker exec`、`docker logs`
+    #               等命令来操作这个特定的容器。
+
+    # 3. 数据卷挂载 (Volumes)
+    volumes:
+      - ./src:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    # 解释:
+    #   - `volumes`: 用于将宿主机的文件或目录挂载到容器内部，实现数据持久化或共享。格式为 `宿主机路径:容器内路径`。
+    #   - `./app:/app`:
+    #     - 这是一个 **绑定挂载 (Bind Mount)**。
+    #     - 它将你当前项目目录下的 `app` 文件夹，映射到容器内部的 `/app` 目录。
+    #     - **作用**: 这是一个非常强大的功能，主要用于 **开发环境**。你在宿主机上对 `app` 文件夹内代码的任何修改，
+    #                 都会立即反映到正在运行的容器中，无需重新构建镜像或重启容器，极大地提高了开发效率。
+    #   - `/tmp/.X11-unix:/tmp/.X11-unix`:
+    #     - 这是实现 **GUI图形界面** 的关键。
+    #     - 它将宿主机上的X Server Unix套接字目录挂载到容器内。
+    #     - **作用**: 容器内的图形化应用程序（如你的Tkinter程序）通过这个套接字与宿主机的X Server（如VcXsrv）通信，
+    #                 从而将图形界面显示在你的宿主机屏幕上。
+
+    # 4. 环境变量 (Environment)
+    environment:
+      - DISPLAY=host.docker.internal:0.0  # 指向 VcXsrv 显示
+    #  - REDIS_PORT=${REDIS_PORT}
+    #  - REDIS_PASSWORD=${REDIS_PASSWORD}
+    #  - MYSQL_USER=${MYSQL_USER}
+    #  - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    # - MYSQL_DATABASE=${MYSQL_DATABASE}
+    # 解释:
+    #   - `environment`: 设置容器内部的环境变量。
+    #   - `DISPLAY=host.docker.internal:0.0`:
+    #     - 这是GUI显示的另一个关键配置。它告诉容器内的应用程序，要连接的X Server地址是 `host.docker.internal`。
+    #     - `host.docker.internal` 是一个特殊的DNS名称，在Docker Desktop for Windows/Mac中，它会自动解析为宿主机的IP地址。
+    #     - `:0.0` 是显示端口，通常对应VcXsrv的默认配置。
+    #   - `REDIS_PORT=${REDIS_PORT}` 等:
+    #     - 这些是使用 **环境变量插值** 的方式。`${VARIABLE_NAME}` 会从运行 `docker-compose up` 命令的终端环境中，
+    #       或者从一个名为 `.env` 的文件中查找对应的值来替换。
+    #     - **作用**: 这是一种 **最佳实践**。它避免了将数据库密码、端口等敏感或易变的配置硬编码在 `docker-compose.yml` 文件中，
+    #                 提高了安全性和灵活性。你需要在项目根目录下创建一个 `.env` 文件来存放这些变量。
+
+    # 5. 依赖关系 (Depends On)
+    #depends_on:
+    #  - redis
+    #  - mysql
+    # 解释:
+    #   - `depends_on`: 定义了服务之间的启动顺序依赖关系。
+    #   - **作用**: Docker Compose会确保在启动 `python-app` 服务之前，先启动 `redis` 和 `mysql` 服务。
+    #               这很重要，因为你的Python应用很可能需要连接到这两个数据库。
+    #   - **注意**: `depends_on` 只保证启动顺序，**不保证** `redis` 和 `mysql` 服务在 `python-app` 启动时已经完全准备好接收连接。
+    #               健壮的应用程序代码内部应该包含重试连接的逻辑。
+
+    # 6. 网络配置 (Networks)
+    #networks:
+    #  - py-redis-mysql-net
+    # 解释:
+    #   - `networks`: 将这个服务加入到指定的自定义网络中。
+    #   - **作用**: 默认情况下，Docker Compose会为项目创建一个默认网络，并将所有服务都加入其中。
+    #               这里显式地指定了一个名为 `py-redis-mysql-net` 的网络。在同一个网络中的容器可以使用服务名（如 `redis`, `mysql`）
+    #               作为主机名来互相通信。例如，你的Python应用可以通过连接 `redis:6379` 来访问Redis服务。
+    #               这使得服务间的通信更加清晰和可控。
+
+    # 7.使用一个无限循环的命令来保持容器运行
+    command: tail -f /dev/null
