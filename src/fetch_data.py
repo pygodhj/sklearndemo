@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog
 from typing import Optional
 import pandas as pd
+from database_models.database_operate import DatabaseOperate
 
 
 #类名含义为获取的数据类，实例化对象为每个新获取的数据
@@ -35,7 +36,11 @@ class FetchedData:
     #从数据库中获取数据的方法
     @classmethod
     def fetch_database(cls)->pd.DataFrame():
-        pass
+        data=DatabaseOperate()
+        tablename=input("请输入数据库表名：")
+        data.query_sql_columns(tablename)
+        df=pd.read_sql(f"SELECT * FROM {tablename}",data.engine).drop('id', axis=1)
+        return df
 
     #从网络中获取数据的方法
     @classmethod
@@ -92,4 +97,4 @@ class FetchedData:
 
 
 if __name__=="__main__":
-    print(FetchedData.fetch_file())
+    print(FetchedData.fetch_database())
