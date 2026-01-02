@@ -1,53 +1,78 @@
 import sqlite3
+from sqlalchemy import create_engine, Column, Integer, String, MetaData, Table, select
+from sqlalchemy.orm import sessionmaker, declarative_base
 import os
-DB_FILE = "ml_dataset.db"
+
 
 class DatabaseOperate:
-
-    # 1. 创建数据库和表
-    @staticmethod
-    def create_table(tablename,columns):
-        # 1. 定义数据库文件的完整路径
-        # 注意：路径分隔符在 Windows 上是 '\'，在 macOS/Linux 上是 '/'
-        # 为了代码的跨平台兼容性，推荐使用 os.path.join()
-
-        # --- 在 Windows 上 ---
-        # db_path = "D:/my_app_data/user_database.db"
-        # 或者使用原始字符串避免转义问题
-        # db_path = r"C:\Users\YourUser\Documents\my_db.db"
-
-        # --- 在 macOS / Linux 上 ---
-        # db_path = "/home/user/data/app.db"
-
-        # --- 使用 os.path.join() (推荐的跨平台方式) ---
-        # 假设我们想在用户的主目录下的一个 'db' 文件夹里创建
-        # 获取脚本根目录
+    #初始化，创建引擎和会话
+    def __init__(self,db_file="ml_dataset.db"):
+        self.db_file = db_file
+         # 1、连接数据库，若数据库不存在，先创建数据库，返回数据库引擎
         script_path = os.path.abspath(__file__)
         root_dir = os.path.dirname(script_path)
-        # 定义目标文件夹
         target_dir = os.path.join(root_dir, "db")
-        # 确保目标文件夹存在，如果不存在则创建
-        os.makedirs(target_dir, exist_ok=True)  # exist_ok=True 表示如果文件夹已存在则不报错
-        # 拼接完整的数据库文件路径
-        db_path = os.path.join(target_dir, DB_FILE)
+        os.makedirs(target_dir, exist_ok=True)
+        db_path = os.path.join(target_dir, self.db_file)
+        self.engine = create_engine(f'sqlite:///{db_path}', echo=False)  # echo=True 可以看到生成的 SQL
+        print(f"--- 数据库 '{db_file}' 已成功连接 ---")
+
+
+        # 2. 创建一个新的 Base 类和 MetaData
+        # 使用一个独立的 MetaData 对象可以更好地管理动态创建的表
+        self.metadata = MetaData()
+        self.base = declarative_base(metadata=self.metadata)
+
+        # 3. 创建会话工厂
+        self.Session = sessionmaker(bind=self.engine)
+
+    #使用 ORM 创建表和数据，建立SQLAlchemy ORM 模型类
+    def create_dynamic_model(self,table_name, columns_definition):
+
+        # 1、确保表名是合法的（可选，但推荐）
+        if not table_name.isalnum() and '_' not in table_name:
+            raise ValueError("表名只能包含字母、数字和下划线。")
+
+        # 2、定义类属性字典
+        class_attrs = {
+            '__tablename__': table_name,
+            # 通常需要一个主键
+            'id': Column(Integer, primary_key=True, autoincrement=True)
+        }
+
+        # 将传入的列定义更新到类属性中
+        # 这会覆盖掉同名的默认属性（如果有的话）
+        class_attrs.update(columns_definition)
+
+        # 类名最好和表名相关，方便调试
+        model_class =  self.base.__class__(table_name.capitalize(), (self.base,), class_attrs)
+
+        return model_class
+
+    #使用Core反射并查询数据
+    def query_sql_columns(self, table_name= "user_data_123"):
+
+        # 创建一个新的 MetaData 对象用于反射（这是个好习惯，但不是必须的）
+        reflection_metadata = MetaData()
+
         try:
-            # 连接到数据库。如果数据库不存在，它将被自动创建。
+            # 使用 Core 反射表结构
+            print(f"正在使用 Core 反射表 '{table_name}'...")
+            reflected_table = Table(table_name, reflection_metadata, autoload_with=self.engine)
+            print(f"成功反射表 '{table_name}'。")
 
-            with sqlite3.connect(db_path) as conn:  # 使用 with 语句可以确保连接和游标被自动关闭，是推荐的最佳实践
-                print(f"成功连接到 '{DB_FILE}' 数据库。")
+            # 在同一个 Session 中使用 Core 查询
+            with self.Session() as session:
+                print(f"正在使用 Core 查询表 '{table_name}' 的数据...")
+                stmt = select(reflected_table)
+                result = session.execute(stmt)
+                print(" | ".join(result.keys()))
+                for row in result:
+                    print(row)
 
-                # 创建一个游标对象。所有数据库操作都通过游标执行。
-                cursor = conn.cursor()
+             # 动态打印结果
+                print("-" * 30)
+                return ()
 
-                # 创建表 IF NOT EXISTS 确保如果表已存在，不会报错
-                create_table_sql = f"""
-                    CREATE TABLE IF NOT EXISTS {tablename} (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        {columns}
-                    );
-                    """
-                cursor.execute(create_table_sql)
-                print("'students' 表创建成功或已存在。")
-
-        except sqlite3.Error as e:
-            print(f"创建数据库/表时出错: {e}")
+        except Exception as e:
+            print(f"使用 Core 查询时发生错误: {e}")
