@@ -44,12 +44,10 @@ class DatabaseOperate:
         class_attrs = {
             '__tablename__': table_name,
             # 通常需要一个主键
-            'id': Column(Integer, primary_key=True, autoincrement=True)
+            'id': Column(Integer, primary_key=True, autoincrement=True),
         }
-
         # 将传入的列定义更新到类属性中
-        # 这会覆盖掉同名的默认属性（如果有的话）
-        class_attrs.update(columns_definition)
+        class_attrs.update(columns_definition)  # 这会覆盖掉同名的默认属性（如果有的话）
 
         # 类名最好和表名相关，方便调试
         model_class =  self.base.__class__(table_name.capitalize(), (self.base,), class_attrs)
@@ -83,3 +81,6 @@ class DatabaseOperate:
 
         except Exception as e:
             print(f"使用 Core 查询时发生错误: {e}")
+
+
+

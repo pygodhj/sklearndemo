@@ -49,8 +49,32 @@ class FetchedData:
 
     #导出数据到文件或数据库的方法
     @classmethod
-    def export_data(cls,df:pd.DataFrame(),ext):
-        pass
+    def export_data(cls,df:pd.DataFrame()):
+        script_path = os.path.abspath(__file__)
+        print(script_path)
+        root_dir = os.path.dirname(os.path.dirname(script_path))
+        print(root_dir)
+        target_dir = os.path.join(root_dir,"data\\raw")
+        print(target_dir)
+
+        ext=input(r"请输入储存格式[sql\csv\xls]：")
+        try:
+            if ext =="sql":
+                table_name = input("请输入要创建的表名：")
+                data = DatabaseOperate()
+                df.to_sql(table_name,data.engine,if_exists='append')
+            elif  ext =="csv":
+                table_name = input("请输入要创建的表名：")
+                target_path =os.path.join(root_dir,f"data\\raw\\{table_name}.csv")
+                df.to_csv(target_path,encoding='utf-8',mode='a')
+            elif ext == "xls":
+                table_name = input("请输入要创建的表名：")
+                target_path = os.path.join(root_dir, f"data\\raw\\{table_name}.xls")
+                df.to_excel(target_dir)
+            else:
+                raise ValueError(f"不支持的文件格式：{ext}")
+        except Exception as e:
+            raise RuntimeError(f"输出文件失败：{e}")
 
     #调用选取文件的窗口，并选取文件导出文件路径的方法（内部私有函数）
     @classmethod
@@ -97,4 +121,5 @@ class FetchedData:
 
 
 if __name__=="__main__":
-    print(FetchedData.fetch_database())
+    df=FetchedData.fetch_database()
+    FetchedData.export_data(df)
