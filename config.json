@@ -1,0 +1,7 @@
+{
+  "project_name": "sklearndemo",
+  "version": "0.0.1",
+  "data_raw_dir": "data/raw",
+  "data_processed_dir": "data/processed",
+  "model_dir": "models"
+}

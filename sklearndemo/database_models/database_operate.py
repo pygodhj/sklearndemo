@@ -16,21 +16,27 @@ class DatabaseOperate:
         self.engine = create_engine(f'sqlite:///{db_path}', echo=False)  # echo=True 可以看到生成的 SQL
         print(f"--- 数据库 '{db_file}' 已成功连接 ---")
 
-        # 2、创建 Inspector 对象
-        inspector = inspect(self.engine)
+        # 2.获取所有表名
+        self.get_table_names()
 
-        # 3. 获取所有表名
-        table_names = inspector.get_table_names()  # get_table_names() 会返回一个包含所有用户定义表名的列表
-        print(table_names)
-
-        # 4. 创建一个新的 Base 类和 MetaData
+        # 3. 创建一个新的 Base 类和 MetaData
         # 使用一个独立的 MetaData 对象可以更好地管理动态创建的表
         self.metadata = MetaData()
         self.base = declarative_base(metadata=self.metadata)
 
-        # 5. 创建会话工厂
+        # 4. 创建会话工厂
         self.Session = sessionmaker(bind=self.engine)
 
+    def get_table_names(self):
+
+        # 1、创建 Inspector 对象
+        inspector = inspect(self.engine)
+
+        # 2. 获取所有表名
+        table_names = inspector.get_table_names()  # get_table_names() 会返回一个包含所有用户定义表名的列表
+
+       # 2. 打印表名
+        print(table_names)
 
 
     #使用 ORM 创建表和数据，建立SQLAlchemy ORM 模型类

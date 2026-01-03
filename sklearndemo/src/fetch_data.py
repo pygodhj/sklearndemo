@@ -1,9 +1,12 @@
+from __future__ import annotations
 import os
 import tkinter as tk
 from tkinter import filedialog
 from typing import Optional
 import pandas as pd
-from database_models.database_operate import DatabaseOperate
+from sklearndemo.database_models.database_operate import DatabaseOperate
+import json
+from sklearndemo import __path__ as sklearndemo_path
 
 
 #类名含义为获取的数据类，实例化对象为每个新获取的数据
@@ -49,28 +52,24 @@ class FetchedData:
 
     #导出数据到文件或数据库的方法
     @classmethod
-    def export_data(cls,df:pd.DataFrame()):
-        script_path = os.path.abspath(__file__)
-        print(script_path)
-        root_dir = os.path.dirname(os.path.dirname(script_path))
-        print(root_dir)
-        target_dir = os.path.join(root_dir,"data\\raw")
-        print(target_dir)
-
-        ext=input(r"请输入储存格式[sql\csv\xls]：")
+    def export_data(cls,df:pd.DataFrame(),**kwargs):
+        target_dir = cls.get_dir()
+        ext=input(r"请输入储存格式[sql\csv\xlsx]：")
         try:
             if ext =="sql":
                 table_name = input("请输入要创建的表名：")
                 data = DatabaseOperate()
-                df.to_sql(table_name,data.engine,if_exists='append')
+                df.to_sql(table_name,data.engine,if_exists='append',**kwargs)
+                data.get_table_names()
+                data.query_sql_columns(table_name)
             elif  ext =="csv":
                 table_name = input("请输入要创建的表名：")
-                target_path =os.path.join(root_dir,f"data\\raw\\{table_name}.csv")
-                df.to_csv(target_path,encoding='utf-8',mode='a')
-            elif ext == "xls":
+                target_path =os.path.join(target_dir,f"{table_name}.csv")
+                df.to_csv(target_path ,encoding='utf-8',mode='a',**kwargs)
+            elif ext == "xlsx":
                 table_name = input("请输入要创建的表名：")
-                target_path = os.path.join(root_dir, f"data\\raw\\{table_name}.xls")
-                df.to_excel(target_dir)
+                target_path = os.path.join(target_dir,f"{table_name}.xlsx")
+                df.to_excel(target_path,engine='openpyxl',**kwargs)
             else:
                 raise ValueError(f"不支持的文件格式：{ext}")
         except Exception as e:
@@ -118,6 +117,32 @@ class FetchedData:
                 return file_paths if file_paths else None
         finally:
             root.destroy()  # 销毁窗口，释放资源
+
+    @classmethod
+    def get_dir(cls):
+        """从配置文件中获取数据目录的绝对路径"""
+        # 1. 定义配置文件的路径
+        current_script_path = sklearndemo_path[0]
+        root_dir = os.path.dirname(current_script_path)
+        config_path = os.path.join(root_dir, "config.json")
+
+        # 2. 读取配置文件
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+
+            # 3. 获取相对路径并构建绝对路径
+            relative_data_dir = config.get("data_raw_dir", "data")
+            absolute_data_dir = os.path.join(root_dir, relative_data_dir)
+
+            return absolute_data_dir
+
+        except FileNotFoundError:
+            print(f"警告: 配置文件 '{config_path}' 未找到。")
+            # 返回一个默认路径作为后备
+            return os.path.join(root_dir, "data", "raw")
+
+
 
 
 if __name__=="__main__":

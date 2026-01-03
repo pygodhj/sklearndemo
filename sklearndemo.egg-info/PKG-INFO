@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: sklearndemo
+Version: 0.0.1
+Author: jiuson
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Dynamic: author
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: requires-python
+
+这是一个用来学习scikit-learn库功能的小demo，该demo包含爬虫、数据库操作、文件数据获取、数据处理、分类、回归等作用
