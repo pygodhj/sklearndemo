@@ -1,7 +1,13 @@
 {
   "project_name": "sklearndemo",
   "version": "0.0.1",
-  "data_raw_dir": "data/raw",
-  "data_processed_dir": "data/processed",
-  "model_dir": "models"
+  "data_dir": "data",
+  "raw_dir": "data/raw",
+  "processed_dir": "data/processed",
+  "notebooks_dir": "notebooks",
+  "reports": "reports",
+  "sklearndemo_dir": "sklearndemo",
+  "src_dir": "sklearndemo/src",
+  "database_models_dir": "sklearndemo/database_models",
+  "db_dir": "sklearndemo/database_models/db"
 }

@@ -2,16 +2,14 @@ from __future__ import annotations
 import os
 import tkinter as tk
 from tkinter import filedialog
-from typing import Optional
+from typing import Optional,Union
 import pandas as pd
 from sklearndemo.database_models.database_operate import DatabaseOperate
-import json
-from sklearndemo import __path__ as sklearndemo_path
+from sklearndemo.config import RAW_DIR
 
 
 #类名含义为获取的数据类，实例化对象为每个新获取的数据
 class FetchedData:
-
 
     #从文件中获取数据的方法
     @classmethod
@@ -38,37 +36,38 @@ class FetchedData:
 
     #从数据库中获取数据的方法
     @classmethod
-    def fetch_database(cls)->pd.DataFrame():
+    def fetch_database(cls)->pd.DataFrame:
         data=DatabaseOperate()
         tablename=input("请输入数据库表名：")
-        data.query_sql_columns(tablename)
-        df=pd.read_sql(f"SELECT * FROM {tablename}",data.engine).drop('id', axis=1)
+        data.query_sql(tablename)
+        df=pd.read_sql(f"SELECT * FROM {tablename}",data.engine)#.drop('id', axis=1)
         return df
 
     #从网络中获取数据的方法
     @classmethod
-    def fetch_internet(cls)->pd.DataFrame():
+    def fetch_internet(cls)->pd.DataFrame:
         pass
 
     #导出数据到文件或数据库的方法
-    @classmethod
-    def export_data(cls,df:pd.DataFrame(),**kwargs):
-        target_dir = cls.get_dir()
+    @staticmethod
+    def export_data(df:pd.DataFrame,**kwargs):
         ext=input(r"请输入储存格式[sql\csv\xlsx]：")
         try:
             if ext =="sql":
                 table_name = input("请输入要创建的表名：")
-                data = DatabaseOperate()
-                df.to_sql(table_name,data.engine,if_exists='append',**kwargs)
-                data.get_table_names()
-                data.query_sql_columns(table_name)
+                db= DatabaseOperate()
+                df.to_sql(table_name,db.engine,if_exists='append',**kwargs)
+                db.get_table_names()
+                db.query_sql(table_name)
+                db.reduplicates_sql(table_name)
+
             elif  ext =="csv":
                 table_name = input("请输入要创建的表名：")
-                target_path =os.path.join(target_dir,f"{table_name}.csv")
+                target_path =os.path.join(RAW_DIR,f"{table_name}.csv")
                 df.to_csv(target_path ,encoding='utf-8',mode='a',**kwargs)
             elif ext == "xlsx":
                 table_name = input("请输入要创建的表名：")
-                target_path = os.path.join(target_dir,f"{table_name}.xlsx")
+                target_path = os.path.join(RAW_DIR,f"{table_name}.xlsx")
                 df.to_excel(target_path,engine='openpyxl',**kwargs)
             else:
                 raise ValueError(f"不支持的文件格式：{ext}")
@@ -77,7 +76,7 @@ class FetchedData:
 
     #调用选取文件的窗口，并选取文件导出文件路径的方法（内部私有函数）
     @classmethod
-    def __file_selector(cls, single_file: bool = True) -> Optional[str | tuple]:
+    def __file_selector(cls, single_file: bool = True) -> Optional[Union[str, tuple]]:
         """
                调出文件选择窗口
                param single_file: True选择单个文件，False选择多个文件
@@ -118,33 +117,10 @@ class FetchedData:
         finally:
             root.destroy()  # 销毁窗口，释放资源
 
-    @classmethod
-    def get_dir(cls):
-        """从配置文件中获取数据目录的绝对路径"""
-        # 1. 定义配置文件的路径
-        current_script_path = sklearndemo_path[0]
-        root_dir = os.path.dirname(current_script_path)
-        config_path = os.path.join(root_dir, "config.json")
-
-        # 2. 读取配置文件
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-
-            # 3. 获取相对路径并构建绝对路径
-            relative_data_dir = config.get("data_raw_dir", "data")
-            absolute_data_dir = os.path.join(root_dir, relative_data_dir)
-
-            return absolute_data_dir
-
-        except FileNotFoundError:
-            print(f"警告: 配置文件 '{config_path}' 未找到。")
-            # 返回一个默认路径作为后备
-            return os.path.join(root_dir, "data", "raw")
 
 
 
 
 if __name__=="__main__":
     df=FetchedData.fetch_database()
-    FetchedData.export_data(df)
+    #FetchedData.export_data(df)
