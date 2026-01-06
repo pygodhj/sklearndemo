@@ -24,6 +24,8 @@
 from sklearndemo.database_models.database_operate import DatabaseOperate
 if __name__ == '__main__':
     db = DatabaseOperate()
-    tablename=input("请输入要去重的表名：")
-    db.query_sql(tablename)
-    db.reduplicates_sql(tablename)
+    db.create_table_orm()
+    #tablename=input("请输入要增加主键的表名：")
+    #db.alter_table(tablename)
+    #db.query_sql(tablename)
+    #db.reduplicates_sql(tablename)

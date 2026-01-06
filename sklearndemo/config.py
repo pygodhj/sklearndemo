@@ -22,7 +22,6 @@ else:
 
 # --- 4. 定义可导出的配置变量 ---
 # 使用 .get() 方法，确保即使配置文件中没有对应项，程序也不会崩溃
-
 DATA_DIR = PROJECT_ROOT / _config.get("data_dir", "data")
 RAW_DIR = PROJECT_ROOT / _config.get("raw_dir", "data/raw")
 PROCESSED_DIR = PROJECT_ROOT / _config.get("processed_dir", "data/processed")
