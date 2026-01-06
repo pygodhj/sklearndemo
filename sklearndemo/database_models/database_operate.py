@@ -1,6 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, MetaData, Table, select, inspect, text, func, delete, Column, \
-    String
+from sqlalchemy import create_engine, MetaData, Table, select, inspect, text, func, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sklearndemo.config import DB_DIR
@@ -29,8 +28,8 @@ class DatabaseOperate:
         self.Session = sessionmaker(bind=self.engine)
 
 
-    # 使用 ORM 创建表和数据，建立SQLAlchemy ORM模型类
-    def orm(self,table_name="user1", columns_definition={"name": Column(String(50))}):
+    # 使用ORM创建动态类
+    def orm(self,table_name, columns_definition):
 
         # 1、确保表名是合法的（可选，但推荐）
         if not table_name.isalnum() and '_' not in table_name:
@@ -38,9 +37,7 @@ class DatabaseOperate:
 
         # 2、定义类属性字典
         class_attrs = {
-            '__tablename__': table_name,
-            # 通常需要一个主键
-            'id': Column(Integer, primary_key=True, autoincrement=True),
+            '__tablename__': table_name
         }
         # 将传入的列定义更新到类属性中
         class_attrs.update(columns_definition)  # 这会覆盖掉同名的默认属性（如果有的话）
@@ -51,25 +48,37 @@ class DatabaseOperate:
 
         return model_class
 
+    # 使用ORM实现表创建或连接
+    # columns_definition类型为orm定义的类型，由Column函数创建，可由 该类中类函数Column创建
+        # columns_definition={
+    #                               'id': Column(Integer, primary_key=True, autoincrement='auto'),
+    #                           "username" : Column(String(50), nullable=False, unique=True, comment="用户名")
+        #                        "email" : Column(String(100), nullable=True, comment="用户邮箱")
+        #                       "is_active":Column(Boolean, default=True, comment="是否激活")
+        #                       "create_time": Column(DateTime, default=datetime.now, comment="创建时间")
+    #                       }
 
-    def create_table_orm(self,table_name="user1", columns_definition={"name":"hj"}):
+    def table_orm(self,table_name, columns_definition):
         try:
-            model_class=self.orm()
+            model_class=self.orm(table_name,columns_definition)
             print(f"正在使用orm创建表 '{table_name}'...")
             model_class.__table__.create(bind=self.engine)
             print(f"表 '{model_class.__tablename__}' 创建成功！")
             self.get_table_names()
+            print(f"表中数据的增删改查可直接调用orm中方法 ")
+            return model_class.__table__.create(bind=self.engine)
         except Exception as e:
-            print(f"表格 '{table_name}' 已存在: {e}")
+            print(f"表格 '{table_name}' 创建或连接失败: {e}")
 
-    def insert_orm(self, table_name="user", columns_definition={"name":"hj"}):
-        User=self.create_table_orm(table_name,columns_definition)
 
-        with self.Session() as session:
-            new_user = User(name='Dynamic User')
-            session.add(new_user)
-            session.commit()
-            print(f"已添加新用户: {session.query(User).first()}")
+
+
+
+
+
+
+
+
 
 
     #  使用 Core 反射表结构
@@ -95,8 +104,30 @@ class DatabaseOperate:
         print(f"数据库中已有{len(table_names)}个表格")
         print(table_names)
 
-    def create_table(self):
-        pass
+
+    def get_column_names(self,table_name= "iris"):
+        reflected_table = self.core(table_name)
+
+        try:
+            with self.Session() as session:
+                print(f"正在使用 Core 查询表 '{table_name}' 的数据...")
+                stmt = select(reflected_table)
+                result = session.execute(stmt)
+                column_names=list(result.keys())
+                return column_names
+
+        except Exception as e:
+            print(f"使用 Core 查询时发生错误: {e}")
+
+
+    def rename_table(self,table_name,new_table_name):
+        try:
+            with self.engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE {table_name} RENAME TO {new_table_name};"))
+                self.get_table_names()
+        except Exception as e:
+            print(f"表格重命名失败: {e}")
+
 
     # 使用Core反射并查询数据
     def query_sql(self, table_name= "iris"):
@@ -110,12 +141,35 @@ class DatabaseOperate:
                 print(" | ".join(result.keys()))
                 for row in result:
                     print(row)
-
              # 动态打印结果
                 print("-" * 30)
-                return ()
+                return result
         except Exception as e:
             print(f"使用 Core 查询时发生错误: {e}")
+
+    def column_rename(self, new_str_list: list, table_name="iris", ):
+    #try:
+        # 执行列名修改
+        old_list = self.get_column_names(table_name)
+
+        if not isinstance(old_list, list) or not isinstance(new_str_list, list):
+            raise TypeError("old_col_list和new_col_list必须是列表类型！")
+        if len(old_list) != len(new_str_list):
+            raise ValueError("旧列名列表和新列名列表长度必须一致！")
+
+        old_str_list=[]
+        for i in range(len(old_list)):
+            print(f"""{old_list[i]}""")
+            old_str_list.append(f"""{old_list[i]}""")
+
+        for i in range(len(old_str_list)):
+            with self.engine.connect() as conn:
+                # 执行删除操作
+                conn.execute(text(f'ALTER TABLE {table_name} RENAME COLUMN "{old_str_list[i]}" TO {new_str_list[i]}'))
+                conn.commit()
+        print("列名修改成功！")
+    #except Exception as e:
+        #print(f"列重命名失败: {e}")
 
 
     # 使用Core反射并删除数据表
@@ -140,7 +194,7 @@ class DatabaseOperate:
                 connection.commit()
 
             print(f"成功删除表格 '{table_name}' (或表格不存在)。")
-
+            self.get_table_names()
         except SQLAlchemyError as e:
             # 推荐捕获更具体的 SQLAlchemyError
             print(f"删除表格 '{table_name}' 时发生数据库错误: {e}")
@@ -235,3 +289,5 @@ class DatabaseOperate:
             # 如果发生任何错误，回滚事务
             trans.rollback()
             print(f"删除操作失败，已回滚。错误: {e}")
+
+
